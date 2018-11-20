@@ -231,15 +231,19 @@ void loop()
 
 
 
-
+//Calculate the combined acceleration vector totAccl from 3 axis vectors:
   float Xaccl =  (float)XA*accRange;
   float Yaccl =  (float)YA*accRange;
   float Zaccl =  (float)ZA*accRange;
+  
+//Multiply with 9,81 to convert unit from g (force not gramm) to m/s^2
   totAccl = 9.81 * sqrt((sq(Xaccl)+sq(Yaccl)+sq(Zaccl)));
+  
   // output data to serial monitor
 
   Serial.print("Acceleration  X: ");
 
+  //Multiply axis values with 9,81 to convert unit from g (force not gramm) to m/s^2
   Serial.println((9.8*Xaccl),4);
 
   Serial.print("Acceleration  Y: ");
@@ -249,7 +253,11 @@ void loop()
   Serial.print("Acceleration  Z: ");
 
   Serial.println((9.8*Zaccl),4);
+  
+  Serial.print("Total Acceleration Force: ");
 
+  Serial.println(totAccl,4);
+/*Comment out the following code to get Gyroscope values and Magnetometer values:*/
 //  Serial.print("Gyro   X: ");
 //
 //  Serial.println((float)XG*gyrRange,4);
@@ -269,12 +277,10 @@ void loop()
 //  Serial.print("Magnet Y: ");
 
 //  Serial.println((float)YM*magRange,4);
-  //float xyz = ((float)YM*magRange,4) 
-  Serial.print("Total Acceleration Force: ");
+  
+//  Serial.print("Magnet Y: ");
 
-  Serial.println(totAccl,4);
-
-  //Serial.println((float)ZM*magRange,4);
+//  Serial.println((float)ZM*magRange,4);
 
 
 
