@@ -1,20 +1,10 @@
-/*
-
-  Test BMX055
 
 
-
-  Test progam for Bosch BMX055, connected to Wire1 (I2C).
-
-*/
-
-
-
+#include "SenseBoxMCU.h"
 #include <Wire.h>
-
 #include <senseBoxIO.h>
-
-
+#include "Adafruit_MQTT.h"        // Adafruit.io MQTT library
+#include "Adafruit_MQTT_Client.h" // Adafruit.io MQTT library
 
 float accRange = 2.0/2048.0; // depends on range set
 
@@ -22,8 +12,41 @@ float gyrRange = 124.87/32768.0; // depends on range set
 
 float magRange = 1./1.6; // fixed; but magnetometer has further dependencies
 
-float totAccl = 0;
+float temp;
+float humi;
+float accelX;
+float accelY;
+float accelZ;
+float gyroX;
+float gyroY;
+float gyroZ;
+float threshold = 0.;
+float angleX = 0;
+float angleY = 0;
+float angleZ = 0;
 
+Bee* b = new Bee();
+
+HDC1080 hdc;
+
+// Adafruit MQTT
+
+#define AIO_SERVER      "10.0.1.71"
+#define AIO_SERVERPORT  1883
+#define AIO_USERNAME    ""
+#define AIO_KEY         ""
+#define AIO_x        "x"
+#define AIO_y        "y"
+#define AIO_z        "z"
+
+
+WiFiClient client;
+
+// create the objects for Adafruit IO
+Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
+Adafruit_MQTT_Publish X_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/x");
+Adafruit_MQTT_Publish Y_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/y");
+Adafruit_MQTT_Publish Z_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/z");
 
 void read(byte addr, byte reg, byte *data, byte len)
 
@@ -69,10 +92,12 @@ void write(byte addr, byte data1, byte data2)
 
 
 
-void setup()
 
-{
+void setup() {
 
+/**
+ *BEGIN ACCELEROMETER CODE
+ */
   // init serial library
 
   Serial.begin(9600);
@@ -116,14 +141,33 @@ void setup()
 
 
   delay(500); // wait 500ms
-
+  
+/**
+ * END ACCELEROMETER CODE
+ */
+  
+  b->connectToWifi("GIATSCHOOL-NET","werockschools");
+delay(1000);
+  hdc.begin();
+  Serial.begin(9600);
 }
 
+void loop() {
 
 
-void loop()
+/**
+ *BEGIN ACCELEROMETER CODE
+ */
 
-{
+/*
+
+  Test BMX055
+
+
+
+  Test progam for Bosch BMX055, connected to Wire1 (I2C).
+
+*/
 
   byte data[6];   // receive buffer
 
@@ -230,34 +274,20 @@ void loop()
   }
 
 
-
-//Calculate the combined acceleration vector totAccl from 3 axis vectors:
-  float Xaccl =  (float)XA*accRange;
-  float Yaccl =  (float)YA*accRange;
-  float Zaccl =  (float)ZA*accRange;
-  
-//Multiply with 9,81 to convert unit from g (force not gramm) to m/s^2
-  totAccl = 9.81 * sqrt((sq(Xaccl)+sq(Yaccl)+sq(Zaccl)));
-  
   // output data to serial monitor
-
-  Serial.print("Acceleration  X: ");
-
-  //Multiply axis values with 9,81 to convert unit from g (force not gramm) to m/s^2
-  Serial.println((9.8*Xaccl),4);
-
-  Serial.print("Acceleration  Y: ");
-
-  Serial.println((9.8*Yaccl),4);
-
-  Serial.print("Acceleration  Z: ");
-
-  Serial.println((9.8*Zaccl),4);
-  
-  Serial.print("Total Acceleration Force: ");
-
-  Serial.println(totAccl,4);
-/*Comment out the following code to get Gyroscope values and Magnetometer values:*/
+//
+//  Serial.print("Accel  X: ");
+//
+//  Serial.println((float)XA*accRange,4);
+//
+//  Serial.print("Accel  Y: ");
+//
+//  Serial.println((float)YA*accRange,4);
+//
+//  Serial.print("Accel  Z: ");
+//
+//  Serial.println((float)ZA*accRange,4);
+//
 //  Serial.print("Gyro   X: ");
 //
 //  Serial.println((float)XG*gyrRange,4);
@@ -275,15 +305,87 @@ void loop()
 //  Serial.println((float)XM*magRange,4);
 //
 //  Serial.print("Magnet Y: ");
-
+//
 //  Serial.println((float)YM*magRange,4);
-  
-//  Serial.print("Magnet Y: ");
-
+//
+//  Serial.print("Magnet Z: ");
+//
 //  Serial.println((float)ZM*magRange,4);
 
 
 
-  delay(100); // wait 1000ms
+/**
+ * END ACCELEROMETER CODE
+ */
 
+
+
+  accelX = (float)XA*accRange;
+
+  accelY = (float)YA*accRange;
+
+  accelZ = (float)ZA*accRange;
+
+  gyroX = (float)XG*gyrRange;
+
+  gyroY = (float)YG*gyrRange;
+
+  gyroZ = (float)ZG*gyrRange;
+
+  if(gyroX >= threshold || gyroX <=  -threshold){
+    gyroX /= 100;
+    angleX += gyroX;
+    }
+  if(angleX < 0){
+    angleX += 360;}
+  else if(angleX >= 360){
+    angleX -= 360;}
+
+  Serial.println(angleX);
+  
+//  temp = hdc.getTemperature();
+//  humi = hdc.getHumidity();
+
+   MQTT_connect();
+        X_feed.publish(accelX);
+        //Serial.println(accelX);
+        Y_feed.publish(accelY);
+        //Serial.println(accelY);
+        Z_feed.publish(accelZ);
+        //Serial.println(accelZ);
+        //Serial.println(gyroX);
+        //Serial.println(gyroY);
+        //Serial.println(gyroZ);
+
+   delay(150);
+
+}
+
+// define functions
+
+void MQTT_connect() {
+  int8_t ret;
+
+  // Stop if already connected.
+  if (mqtt.connected()) {
+    return;
+  }
+
+  Serial.print("Connecting to MQTT... ");
+
+  uint8_t retries = 3;
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.println(mqtt.connectErrorString(ret));
+       Serial.println(ret);
+       Serial.println("Retrying MQTT connection in 5 seconds...");
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds
+       retries--;
+       if (retries == 0) {
+         // basically die and wait for WDT to reset me
+         while (1);
+       }
+  }
+
+  Serial.println("MQTT Connected!");
 }
