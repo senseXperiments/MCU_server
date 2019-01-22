@@ -6,7 +6,12 @@
 #include "Adafruit_MQTT.h"        // Adafruit.io MQTT library
 #include "Adafruit_MQTT_Client.h" // Adafruit.io MQTT library
 
-float accRange = 2.0/2048.0; // depends on range set
+char serverip[] = "Server-Adress";
+char ssid[] = "WIFI-Name";
+char password[] = "WIFI-Password";
+
+
+float accRange = 16.0/2048.0; // depends on range set
 
 float gyrRange = 124.87/32768.0; // depends on range set
 
@@ -17,6 +22,7 @@ float humi;
 float accelX;
 float accelY;
 float accelZ;
+float accelTot;
 float gyroX;
 float gyroY;
 float gyroZ;
@@ -31,13 +37,14 @@ HDC1080 hdc;
 
 // Adafruit MQTT
 
-#define AIO_SERVER      "10.0.1.71"
+#define AIO_SERVER      serverip
 #define AIO_SERVERPORT  1883
 #define AIO_USERNAME    ""
 #define AIO_KEY         ""
 #define AIO_x        "x"
 #define AIO_y        "y"
 #define AIO_z        "z"
+#define AIO_tot      "tot"
 
 
 WiFiClient client;
@@ -47,6 +54,9 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 Adafruit_MQTT_Publish X_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/x");
 Adafruit_MQTT_Publish Y_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/y");
 Adafruit_MQTT_Publish Z_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/z");
+Adafruit_MQTT_Publish Tot_feed = Adafruit_MQTT_Publish(&mqtt, "accelerometer/tot");
+
+
 
 void read(byte addr, byte reg, byte *data, byte len)
 
@@ -102,7 +112,7 @@ void setup() {
 
   Serial.begin(9600);
 
-  while (!Serial); // wait for serial monitor
+//  while (!Serial); // wait for serial monitor
 
   Serial.println("Test BMX055");
 
@@ -126,11 +136,13 @@ void setup() {
 
   write(I2C_MAGNET, 0x52, 0x20); // REP_Z=0x20     32+1=33 repetitions
 
-  write(I2C_ACCEL, 0x0F, 0x03);  // PMU_RANGE=0x03 +/-2g
+  write(I2C_ACCEL, 0x0F, 0x0C);  // PMU_RANGE=0x0C +/-16g
 
-  write(I2C_ACCEL, 0x10, 0x08);  // PMU_BW=0x08    7.81Hz
+  write(I2C_ACCEL, 0x10, 0x09);  // PMU_BW=0x09    15.63hz
 
   write(I2C_ACCEL, 0x11, 0x00);  // PMU_LPW=0x00   normal, sleep 0.5ms
+  
+//  write(I2C_ACCEL)
 
   write(I2C_GYRO, 0x0F, 0x04);   // RANGE=0x04     +/-125deg/s
 
@@ -146,10 +158,9 @@ void setup() {
  * END ACCELEROMETER CODE
  */
   
-  b->connectToWifi("GIATSCHOOL-NET","werockschools");
+  b->connectToWifi(ssid, password);
 delay(1000);
   hdc.begin();
-  Serial.begin(9600);
 }
 
 void loop() {
@@ -332,6 +343,9 @@ void loop() {
 
   gyroZ = (float)ZG*gyrRange;
 
+  accelTot = 9.81 * sqrt((sq(accelX)+sq(accelY)+sq(accelZ)));
+
+
   if(gyroX >= threshold || gyroX <=  -threshold){
     gyroX /= 100;
     angleX += gyroX;
@@ -352,12 +366,14 @@ void loop() {
         Y_feed.publish(accelY);
         //Serial.println(accelY);
         Z_feed.publish(accelZ);
+        
+        Tot_feed.publish(accelTot);
         //Serial.println(accelZ);
         //Serial.println(gyroX);
         //Serial.println(gyroY);
         //Serial.println(gyroZ);
 
-   delay(150);
+   delay(100);
 
 }
 
