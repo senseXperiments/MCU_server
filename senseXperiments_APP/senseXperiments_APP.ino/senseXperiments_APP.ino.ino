@@ -6,9 +6,9 @@
 #include "Adafruit_MQTT.h"        // Adafruit.io MQTT library
 #include "Adafruit_MQTT_Client.h" // Adafruit.io MQTT library
 
-char serverip[] = "192.168.0.227";
-char ssid[] = "Mehmet Scholl du Hurensohn";
-char password[] = "Wirhaben1neues";
+char serverip[] = "PLEASE TYPE THE MQTT SERVER ADRESS HERE";
+char ssid[] = "PLEASE GIVE YOUR NETWORK NAME HERE";
+char password[] = "PLEASE ENTER YOUR NETWORK PASSWORD HERE";
 
 
 float accRange = 16.0/2048.0; // depends on range set
