@@ -6,30 +6,19 @@
 #include "Adafruit_MQTT.h"        // Adafruit.io MQTT library
 #include "Adafruit_MQTT_Client.h" // Adafruit.io MQTT library
 
-char serverip[] = "192.168.0.227";
-char ssid[] = "Mehmet Scholl du Hurensohn";
-char password[] = "Wirhaben1neues";
+char serverip[] = "127.0.0.1";
+char ssid[] = "SSID";
+char password[] = "Password";
 
 
 float accRange = 16.0/2048.0; // depends on range set
 
-float gyrRange = 124.87/32768.0; // depends on range set
 
-float magRange = 1./1.6; // fixed; but magnetometer has further dependencies
-
-float temp;
-float humi;
 float accelX;
 float accelY;
 float accelZ;
 float accelTot;
-float gyroX;
-float gyroY;
-float gyroZ;
-float threshold = 0.;
-float angleX = 0;
-float angleY = 0;
-float angleZ = 0;
+
 
 Bee* b = new Bee();
 
@@ -130,28 +119,12 @@ void setup() {
 
   delay(20); // wait 20ms
 
-  write(I2C_MAGNET, 0x4C, 0x00); // CTRL=0x00      normal, ODR 10Hz
-
-  write(I2C_MAGNET, 0x51, 0x10); // REP_XY=0x10    16*2+1=33 repetitions
-
-  write(I2C_MAGNET, 0x52, 0x20); // REP_Z=0x20     32+1=33 repetitions
-
   write(I2C_ACCEL, 0x0F, 0x0C);  // PMU_RANGE=0x0C +/-16g
 
   write(I2C_ACCEL, 0x10, 0x09);  // PMU_BW=0x09    15.63hz
 
   write(I2C_ACCEL, 0x11, 0x00);  // PMU_LPW=0x00   normal, sleep 0.5ms
   
-//  write(I2C_ACCEL)
-
-  write(I2C_GYRO, 0x0F, 0x04);   // RANGE=0x04     +/-125deg/s
-
-  write(I2C_GYRO, 0x10, 0x07);   // BW=0x07        100Hz
-
-  write(I2C_GYRO, 0x11, 0x00);   // LPM1=0x00      normal, sleep 2ms
-
-
-
   delay(500); // wait 500ms
   
 /**
@@ -221,157 +194,22 @@ void loop() {
   }
 
 
-
-  // read gyroscope data and convert them
-
-  read(I2C_GYRO, 0x02, data, 6);
-
-
-
-  XG = (data[1] << 8) | (data[0] >> 0); // 16 bit
-
-  if (XG > 32767) {
-
-    XG -= 65536;
-
-  }
-
-  YG = (data[3] << 8) | (data[2] >> 0); // 16 bit
-
-  if (YG > 32767) {
-
-    YG -= 65536;
-
-  }
-
-  ZG = (data[5] << 8) | (data[4] >> 0); // 16 bit
-
-  if (ZG > 32767) {
-
-    ZG -= 65536;
-
-  }
-
-
-
-  // read magnetometer data and convert them
-
-  read(I2C_MAGNET, 0x42, data, 6);
-
-
-
-  XM = (data[1] << 5) | ((data[0] & 0xF8) >> 3); // 13 bit
-
-  if (XM > 4095) {
-
-    XM -= 8192;
-
-  }
-
-  YM = (data[3] << 5) | ((data[2] & 0xF8) >> 3); // 13 bit
-
-  if (YM > 4095) {
-
-    YM -= 8192;
-
-  }
-
-  ZM = (data[5] << 5) | ((data[4] & 0xFE) >> 3); // 15 bit, but use 13 bit
-
-  if (ZM > 4095) {
-
-    ZM -= 8192;
-
-  }
-
-
-  // output data to serial monitor
-//
-//  Serial.print("Accel  X: ");
-//
-//  Serial.println((float)XA*accRange,4);
-//
-//  Serial.print("Accel  Y: ");
-//
-//  Serial.println((float)YA*accRange,4);
-//
-//  Serial.print("Accel  Z: ");
-//
-//  Serial.println((float)ZA*accRange,4);
-//
-//  Serial.print("Gyro   X: ");
-//
-//  Serial.println((float)XG*gyrRange,4);
-//
-//  Serial.print("Gyro   Y: ");
-//
-//  Serial.println((float)YG*gyrRange,4);
-//
-//  Serial.print("Gyro   Z: ");
-//
-//  Serial.println((float)ZG*gyrRange,4);
-//
-//  Serial.print("Magnet X: ");
-//
-//  Serial.println((float)XM*magRange,4);
-//
-//  Serial.print("Magnet Y: ");
-//
-//  Serial.println((float)YM*magRange,4);
-//
-//  Serial.print("Magnet Z: ");
-//
-//  Serial.println((float)ZM*magRange,4);
-
-
-
-/**
- * END ACCELEROMETER CODE
- */
-
-
-
   accelX = (float)XA*accRange;
 
   accelY = (float)YA*accRange;
 
   accelZ = (float)ZA*accRange;
 
-  gyroX = (float)XG*gyrRange;
-
-  gyroY = (float)YG*gyrRange;
-
-  gyroZ = (float)ZG*gyrRange;
-
   accelTot = 9.81 * sqrt((sq(accelX)+sq(accelY)+sq(accelZ)));
-
-
-  if(gyroX >= threshold || gyroX <=  -threshold){
-    gyroX /= 100;
-    angleX += gyroX;
-    }
-  if(angleX < 0){
-    angleX += 360;}
-  else if(angleX >= 360){
-    angleX -= 360;}
-
-  Serial.println(angleX);
   
-//  temp = hdc.getTemperature();
-//  humi = hdc.getHumidity();
-
-   MQTT_connect();
+  MQTT_connect();
         X_feed.publish(accelX);
-        //Serial.println(accelX);
+
         Y_feed.publish(accelY);
-        //Serial.println(accelY);
+
         Z_feed.publish(accelZ);
         
         Tot_feed.publish(accelTot);
-        //Serial.println(accelZ);
-        //Serial.println(gyroX);
-        //Serial.println(gyroY);
-        //Serial.println(gyroZ);
 
    delay(100);
 
